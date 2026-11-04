@@ -1,0 +1,9 @@
+Python is a programming language used to build applications, automate tasks, and work with data.
+
+A variable stores a value that can be used later in a program. Variables can store text, numbers, and other types of data.
+
+A list stores multiple items in a single variable. Lists are useful when we need to keep and process a collection of values.
+
+A function is a reusable block of code that performs a specific task. Functions help organize code and avoid repeating the same instructions.
+
+A Python library contains reusable code written by other developers. Libraries help us perform tasks without writing everything from scratch.

@@ -1,0 +1,9 @@
+Machine learning is a branch of artificial intelligence that allows computers to learn patterns from data.
+
+A dataset is a collection of information used to train or evaluate a machine learning model. It can contain numbers, text, images, or other data.
+
+Training is the process in which a model learns patterns from examples. The quality and amount of training data can affect the model's performance.
+
+A feature is an input variable used by a machine learning model to make predictions. For example, house size can be a feature when predicting house prices.
+
+A prediction is the output produced by a trained model. A model might predict a house price, identify an image, or classify an email as spam.

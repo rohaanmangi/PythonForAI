@@ -1,0 +1,11 @@
+Retrieval-Augmented Generation (RAG) is a technique that helps an AI model answer questions using information retrieved from external documents.
+
+Document loading is the process of reading files and bringing their contents into a program. A RAG system can load text files, PDFs, and other supported document types.
+
+Chunking divides a long document into smaller pieces of text. Smaller chunks can make it easier to find information related to a specific question.
+
+An embedding represents text as a list of numbers. These numbers help a computer compare the meaning of different pieces of text.
+
+A vector database stores embeddings and related information. It can search for chunks that are semantically similar to a user's question.
+
+During retrieval, a RAG system searches its document collection and selects relevant chunks. The language model then uses the retrieved information to generate an answer.
