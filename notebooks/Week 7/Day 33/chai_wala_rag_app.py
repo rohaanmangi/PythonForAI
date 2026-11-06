@@ -20,25 +20,39 @@ EMB_MODEL = "nvidia/nemotron-3-embed-1b:free"      # embedding model (free, Day 
 
 def embed(texts):
     r = client.embeddings.create(model=EMB_MODEL, input=texts)    # one request for the whole list
-    return [item.embedding for item in r.data]                    # one vector per text
+    vectors = []
+    for item in r.data:
+        vectors.append(item.embedding)                            # one vector per text
+    return vectors
 
 from pathlib import Path
 
 def load_documents(folder):
     docs = []
     for path in sorted(Path(folder).glob("*.txt")):              # every .txt file in the folder
-        docs.append({"source": path.name, "text": path.read_text(encoding="utf-8")})
+        docs.append({
+            "source": path.name,
+            "text": path.read_text(encoding="utf-8")
+        })
     return docs
 
 def chunk_by_paragraph(text):
-    parts = [p.strip() for p in text.split("\n\n")]              # a blank line = a new paragraph
-    return [p for p in parts if len(p) > 30]                      # skip very short parts, like titles
+    paragraphs = []
+    for p in text.split("\n\n"):                                  # a blank line = a new paragraph
+        p = p.strip()
+        if len(p) > 30:                                           # skip very short parts, like titles
+            paragraphs.append(p)
+    return paragraphs
 
 def chunk_documents(docs):
     chunks = []
     for doc in docs:
         for i, text in enumerate(chunk_by_paragraph(doc["text"])):
-            chunks.append({"id": f"{doc['source']}-{i}", "source": doc["source"], "text": text})
+            chunks.append({
+                "id": f"{doc['source']}-{i}",
+                "source": doc["source"],
+                "text": text
+            })
     return chunks
 
 chunks = chunk_documents(load_documents("chai_wala_docs"))
@@ -46,20 +60,45 @@ chunks = chunk_documents(load_documents("chai_wala_docs"))
 import chromadb
 
 db = chromadb.PersistentClient(path="chai_db")              # saved in the folder "chai_db": not lost
-shop = db.get_or_create_collection(name="chai_wala_docs", metadata={"hnsw:space": "cosine"})
+shop = db.get_or_create_collection(
+    name="chai_wala_docs",
+    metadata={
+        "hnsw:space": "cosine"
+    }
+)
 
 if shop.count() == 0:                                       # embed only the first time (saves free requests)
+    ids = []
+    documents = []
+    metadatas = []
+    for c in chunks:
+        ids.append(c["id"])
+        documents.append(c["text"])
+        metadatas.append({      # keep the file name with each chunk
+            "source": c["source"]
+        })
+
     shop.add(
-        ids=[c["id"] for c in chunks],
-        documents=[c["text"] for c in chunks],
-        metadatas=[{"source": c["source"]} for c in chunks],    # keep the file name with each chunk
-        embeddings=embed([c["text"] for c in chunks]),
+        ids=ids,
+        documents=documents,
+        metadatas=metadatas,
+        embeddings=embed(documents),
     )
 
 def retrieve(question, n=3):
     r = shop.query(query_embeddings=embed([question]), n_results=n)
-    return [{"text": t, "source": m["source"], "distance": d}
-            for t, m, d in zip(r["documents"][0], r["metadatas"][0], r["distances"][0])]
+    texts = r["documents"][0]          # [0] = results for our first (only) question
+    sources = r["metadatas"][0]
+    distances = r["distances"][0]
+
+    found = []
+    for i in range(len(texts)):
+        found.append({
+            "text": texts[i],
+            "source": sources[i]["source"],
+            "distance": distances[i]
+        })
+    return found
 
 I_DONT_KNOW = "Sorry, I don't know. Please call 042-1234567."
 CUTOFF = 0.85                    # choose it by looking at YOUR distances (Step 4)
@@ -75,9 +114,20 @@ def rag(question):
     found = retrieve(question)                                          # 1. Retrieve
     if found[0]["distance"] > CUTOFF:                                   # nothing is close: do not ask the LLM
         return I_DONT_KNOW
-    context = "\n\n".join(f"[{f['source']}] {f['text']}" for f in found)   # each chunk with its source
-    messages = [{"role": "system", "content": RAG_SYSTEM},
-                {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"}]   # 2. Augment
+    pieces = []
+    for f in found:
+        pieces.append(f"[{f['source']}] {f['text']}")               # each chunk with its source
+    context = "\n\n".join(pieces)
+    messages = [        # 2. Augment
+        {
+            "role": "system",
+            "content": RAG_SYSTEM
+        },
+        {
+            "role": "user",
+            "content": f"Context:\n{context}\n\nQuestion: {question}"
+        }
+    ]
     return ask(messages)                                                # 3. Generate
 
 # ---------------- the web page (Day 27) ----------------
@@ -85,7 +135,10 @@ st.title("☕ Chai Wala Support Bot")
 st.caption("Answers come from the Chai Wala documents. The source file is shown in [brackets].")
 
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Assalam o Alaikum! Ask me about our menu, delivery, timings or refunds."}]
+    st.session_state.messages = [{
+        "role": "assistant",
+        "content": "Assalam o Alaikum! Ask me about our menu, delivery, timings or refunds."
+    }]
 
 for m in st.session_state.messages:
     st.chat_message(m["role"]).write(m["content"])
@@ -93,9 +146,15 @@ for m in st.session_state.messages:
 question = st.chat_input("Ask Chai Wala...")
 if question:
     st.chat_message("user").write(question)
-    st.session_state.messages.append({"role": "user", "content": question})
+    st.session_state.messages.append({
+        "role": "user",
+        "content": question
+    })
 
     reply = rag(question)                                    # RAG version 2 (Day 32)
 
     st.chat_message("assistant").write(reply)
-    st.session_state.messages.append({"role": "assistant", "content": reply})
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": reply
+    })
