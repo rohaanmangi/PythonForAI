@@ -9,6 +9,7 @@ order_list = [
     "OR-1047"
 ]
 
+
 @tool
 def fetch_menu() -> list[dict]:
     """Get the restaurant menu with prices in PKR."""
@@ -30,18 +31,19 @@ def log_complaint(customer_name: str, order_id: str, phone: str, complaint: str)
     """Save a customer complaint for a valid order ID."""
     return save_complaint(customer_name, order_id, phone, complaint)
 
+@tool
+def get_offer() -> dict                                                                                                                                                               :
+    """Get the currently available restaurant offers and promotions."""
+    return {
+        "message": "***Today's Offer***\n- Buy 2 Zinger Burgers get 1 Club Sandwich"
+    }
+
 TOOLS = [
     fetch_menu,
     validate_order_id,
-    log_complaint
+    log_complaint,
+    get_offer
 ]
-
-
-
-
-
-
-
 
 
 

@@ -2,7 +2,7 @@
 from langgraph.prebuilt import create_react_agent
 from langgraph_supervisor import create_supervisor
 from modules.ai_agent.graph import create_chat_model
-from modules.ai_agent.tools import fetch_menu, validate_order_id, log_complaint
+from modules.ai_agent.tools import fetch_menu, validate_order_id, log_complaint, get_offer
 
 
 def build_supervisor(llm="groq"):
@@ -12,8 +12,9 @@ def build_supervisor(llm="groq"):
         model=model,
         tools=[fetch_menu],
         name="menu_agent",
-        prompt="You answer menu and price questions. Prices are in PKR. Always use fetch_menu. Write prices like Rs. 850, never use the peso sign.",
+        prompt="You answer menu and price questions. Prices are in PKR. Always use fetch_menu. Write prices like Rs. 850, never use the sign of any currency.",
     )
+
     complaint_agent = create_react_agent(
         model=model,
         tools=[validate_order_id, log_complaint],
@@ -23,11 +24,18 @@ def build_supervisor(llm="groq"):
                 "Ask for missing details. Never invent a complaint ID."),
     )
 
+    offer_agent = create_react_agent(
+        model=model,
+        tools=[get_offer],
+        name="offer_agent",
+        prompt="You answer the offer queries. Make sure to use get_offer."
+    )
+
     supervisor = create_supervisor(
-        agents=[menu_agent, complaint_agent],
+        agents=[menu_agent, complaint_agent, offer_agent],
         model=model,
         prompt=("You are the manager of Xander Restaurant support. "
-                "Menu or price questions -> menu_agent. Complaints -> complaint_agent. "
+                "Menu or price questions -> menu_agent. Complaints -> complaint_agent. Offer questions -> get_offer"
                 "For greetings, answer yourself in one short line. "
                 "After a worker agent answers, write nothing more: repeat the worker's answer exactly."),
     )
